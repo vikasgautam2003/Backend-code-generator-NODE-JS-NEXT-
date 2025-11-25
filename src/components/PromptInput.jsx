@@ -22,7 +22,7 @@ export default function PromptInput({ prompt, setPrompt, loading, onGenerate }) 
         "
       />
 
-      {/* Bottom Action Bar */}
+    
       <div className="flex items-center justify-end gap-3 px-4 py-3 border-t border-[#1a2332] bg-[#0d1522] flex-none">
 
         <button

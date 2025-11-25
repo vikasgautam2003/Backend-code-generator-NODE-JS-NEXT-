@@ -186,10 +186,7 @@ export default function BackendGenerator() {
           <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
           <span className="text-sm tracking-wider text-slate-400">Backend Studio</span>
         </div>
-        <div className="flex items-center gap-3">
-          <button className="px-3 py-1.5 text-xs bg-white/5 border border-white/10 hover:bg-white/10 rounded-lg">⌘K</button>
-          <div className="w-8 h-8 rounded-full bg-white/10 border border-white/20"></div>
-        </div>
+        
       </div>
 
       <div className="flex flex-1 overflow-hidden min-h-0">
