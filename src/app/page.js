@@ -21,7 +21,7 @@ export default function LandingPage() {
           BackNest<span className="text-neutral-300">.ai</span>
         </div>
         <a
-          href="/backend"
+          href="/Backend"
           className="px-6 py-2.5 rounded-lg bg-neutral-200 text-black font-medium hover:bg-white transition"
         >
           Get Started
@@ -41,7 +41,7 @@ export default function LandingPage() {
         </p>
 
         <a
-          href="/backend"
+          href="/Backend"
           className="mt-12 px-8 py-3 rounded-lg bg-neutral-200 text-black text-base font-medium hover:bg-white transition"
         >
           Start Building →
