@@ -70,15 +70,12 @@
 //           <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
 //           <span className="text-sm tracking-wider text-slate-400">Backend Studio</span>
 //         </div>
-//         <div className="flex items-center gap-3">
-//           <button className="px-3 py-1.5 text-xs bg-white/5 border border-white/10 hover:bg-white/10 rounded-lg">⌘K</button>
-//           <div className="w-8 h-8 rounded-full bg-white/10 border border-white/20"></div>
-//         </div>
+        
 //       </div>
 
-//       <div className="flex flex-1 overflow-hidden">
+//       <div className="flex flex-1 overflow-hidden min-h-0">
 
-//         <div className="w-[300px] min-w-[300px] h-full bg-[#0d1117] border-r border-white/10 p-5 space-y-6">
+//         <div className="w-[300px] min-w-[300px] h-full bg-[#0d1117] border-r border-white/10 p-5 space-y-6 overflow-y-auto">
 //           <div className="bg-white/5 p-5 rounded-xl border border-white/10 backdrop-blur-lg shadow-lg">
 //             <RuntimeSelector runtime={runtime} setRuntime={setRuntime} />
 //           </div>
@@ -87,11 +84,15 @@
 //           </div>
 //         </div>
 
-//         <div className="flex flex-col flex-1 overflow-hidden">
+//         <div className="flex flex-col flex-1 overflow-hidden min-h-0">
 
-//           <div className="flex-1 border-b border-white/10 bg-[#0e121a]/60 backdrop-blur-xl p-4">
-//             <div className="w-full h-full rounded-xl border border-white/10 bg-[#0d1017] shadow-2xl overflow-hidden">
-//               <GeneratedOutput code={code} copyToClipboard={copy} downloadCode={download} />
+//           <div className="flex-1 border-b border-white/10 bg-[#0e121a]/60 backdrop-blur-xl p-4 min-h-0 overflow-hidden flex flex-col h-0">
+//             <div className="w-full h-full rounded-xl border border-white/10 bg-[#0d1017] shadow-2xl overflow-hidden min-h-0">
+//               <GeneratedOutput
+//                 code={code}
+//                 copyToClipboard={copy}
+//                 downloadCode={download}
+//               />
 //             </div>
 //           </div>
 
@@ -108,10 +109,11 @@
 
 //         </div>
 //       </div>
-
 //     </div>
 //   );
 // }
+
+
 
 
 
@@ -129,7 +131,11 @@ export default function BackendGenerator() {
   const [prompt, setPrompt] = useState('');
   const [runtime, setRuntime] = useState('nextjs');
   const [dbType, setDbType] = useState('mongoose');
-  const [code, setCode] = useState('');
+  const [mode, setMode] = useState('single');
+
+  const [files, setFiles] = useState(null);
+  const [activeFile, setActiveFile] = useState(null);
+
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
 
@@ -141,34 +147,48 @@ export default function BackendGenerator() {
   async function handleGenerate() {
     if (!prompt.trim()) return showToast('Describe your endpoint');
     setLoading(true);
-    setCode('');
+    setFiles(null);
+    setActiveFile(null);
+
     try {
       const r = await fetch('/api/generate-endpoint', {
         method: 'POST',
-        body: JSON.stringify({ prompt, runtime, dbType }),
+        body: JSON.stringify({ prompt, runtime, dbType, mode }),
         headers: { 'Content-Type': 'application/json' }
       });
+
       const d = await r.json();
-      setCode(d.code || '');
+
+      if (mode === 'single') {
+        const m = { 'output.js': d.code };
+        setFiles(m);
+        setActiveFile('output.js');
+      } else {
+        setFiles(d.files || {});
+        const first = Object.keys(d.files || {})[0];
+        setActiveFile(first);
+      }
+
       showToast('Generated');
     } catch {
       showToast('Failed');
     }
+
     setLoading(false);
   }
 
-  const copy = async () => {
-    if (!code) return showToast('Nothing to copy');
-    await navigator.clipboard.writeText(code);
+  const copyCurrent = () => {
+    if (!files || !activeFile) return;
+    navigator.clipboard.writeText(files[activeFile] || '');
     showToast('Copied');
   };
 
-  const download = () => {
-    if (!code) return showToast('Nothing to download');
-    const blob = new Blob([code], { type: 'text/plain' });
+  const downloadCurrent = () => {
+    if (!files || !activeFile) return;
+    const blob = new Blob([files[activeFile] || ''], { type: 'text/plain' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `generated-${runtime}-${dbType}.js`;
+    a.download = activeFile;
     a.click();
   };
 
@@ -186,7 +206,6 @@ export default function BackendGenerator() {
           <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
           <span className="text-sm tracking-wider text-slate-400">Backend Studio</span>
         </div>
-        
       </div>
 
       <div className="flex flex-1 overflow-hidden min-h-0">
@@ -195,6 +214,7 @@ export default function BackendGenerator() {
           <div className="bg-white/5 p-5 rounded-xl border border-white/10 backdrop-blur-lg shadow-lg">
             <RuntimeSelector runtime={runtime} setRuntime={setRuntime} />
           </div>
+
           <div className="bg-white/5 p-5 rounded-xl border border-white/10 backdrop-blur-lg shadow-lg">
             <DatabaseSelector dbType={dbType} setDbType={setDbType} />
           </div>
@@ -203,12 +223,33 @@ export default function BackendGenerator() {
         <div className="flex flex-col flex-1 overflow-hidden min-h-0">
 
           <div className="flex-1 border-b border-white/10 bg-[#0e121a]/60 backdrop-blur-xl p-4 min-h-0 overflow-hidden flex flex-col h-0">
+
+            {files && (
+              <div className="w-full flex-none flex gap-2 p-2 border-b border-white/10 bg-[#0d1017]">
+                {Object.keys(files).map((name) => (
+                  <button
+                    key={name}
+                    onClick={() => setActiveFile(name)}
+                    className={`px-3 py-1 text-xs rounded ${
+                      activeFile === name
+                        ? 'bg-cyan-500/20 text-cyan-300'
+                        : 'text-slate-400'
+                    }`}
+                  >
+                    {name}
+                  </button>
+                ))}
+              </div>
+            )}
+
             <div className="w-full h-full rounded-xl border border-white/10 bg-[#0d1017] shadow-2xl overflow-hidden min-h-0">
+
               <GeneratedOutput
-                code={code}
-                copyToClipboard={copy}
-                downloadCode={download}
+                code={files?.[activeFile] || ''}
+                copyToClipboard={copyCurrent}
+                downloadCode={downloadCurrent}
               />
+
             </div>
           </div>
 
@@ -219,6 +260,8 @@ export default function BackendGenerator() {
                 setPrompt={setPrompt}
                 loading={loading}
                 onGenerate={handleGenerate}
+                mode={mode}
+                setMode={setMode}
               />
             </div>
           </div>
