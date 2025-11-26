@@ -20,7 +20,7 @@ BackNest.ai automatically creates complete backend folder structures — control
 ---
 
 
-![BackNest.ai Screenshot](YOUR_IMAGE_URL_HERE)
+![BackNest.ai Screenshot](public/back.png)
 
 
 ## 📖 About The Project
