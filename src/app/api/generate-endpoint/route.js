@@ -1,64 +1,3 @@
-// import { GoogleGenerativeAI } from "@google/generative-ai";
-// import { NextResponse } from "next/server";
-
-
-// const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
-
-
-// export async function POST(req) {
-//     try{
-//        const { prompt, runtime, dbType } = await req.json();
-
-//        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-
-//         const systemPrompt = `
-//         You are a Senior Backend Architect. Write a production-ready API file based on the user's stack.
-
-//         STACK CONFIGURATION:
-//         - Runtime: ${runtime}
-//         - Database/ORM: ${dbType}
-
-//         RULES:
-//         1. If Runtime is 'nextjs':
-//             - Use 'next/server' for NextResponse.
-//             - Export async functions like GET, POST, etc.
-//             - Follow Next.js App Router conventions (route.js).
-        
-//         2. If Runtime is 'express':
-//             - Use standard (req, res) pattern.
-//             - Output a complete router file (e.g., const router = express.Router(); ... module.exports = router;).
-        
-//         3. Database Specifics:
-//             - 'mongoose': Assume models are imported. Use async/await.
-//             - 'prisma': Import and use 'prisma' client.
-//             - 'pg' (Raw SQL): Use 'pg' pool for queries (e.g., await pool.query('SELECT...')).
-//             - 'sequelize': Use Model.findAll() style.
-
-//         4. General:
-//             - Include try/catch blocks with proper error status codes (500 for server, 400 for bad input).
-//             - Add comments explaining the logic.
-//             - Return ONLY the raw code string. No markdown formatting.
-//         `;
-
-//         const result = await model.generateContent([
-//             systemPrompt,
-//             `User Request:' ${prompt}` 
-//         ])
-
-//         const responseText = result.response.text();
-        
-//         const cleanCode = responseText.replace(/```javascript|```js|```/g, "").trim();
-
-//         return NextResponse.json({ code: cleanCode });
-
-
-//     }  catch (error) {
-
-//     console.error("Generator Error:", error);
-//     return NextResponse.json({ error: "Generation Failed" }, { status: 500 });
-    
-//   }
-// }
 
 
 
@@ -70,63 +9,149 @@ const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
 
 export async function POST(req) {
   try {
-    const { prompt, runtime, dbType, mode } = await req.json();
+    const { prompt, runtime, dbType } = await req.json();
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const model = genAI.getGenerativeModel({
+      model: "gemini-2.5-flash"
+    });
 
     const systemPrompt = `
-You are a Senior Backend Architect.
+You are BackNest AI — a Senior Backend Architect and STRICT JSON generator.
 
-STACK:
-- Runtime: ${runtime}
-- Database: ${dbType}
+YOU MUST ALWAYS output valid JSON in THIS exact structure:
 
-MODES:
-1. single → return only one production backend file
-2. multi → return a full backend structure with multiple files
-
-FOR multi:
-Return JSON with this exact format:
 {
   "files": {
-      "filePathA": "code here",
-      "filePathB": "code here"
+    "filename.ext": "file content as a JSON string"
   }
 }
 
-No markdown.
-Only raw JSON for multi mode.
-Only raw code for single mode.
+===========================
+ABSOLUTE NON-NEGOTIABLE RULES
+===========================
+- Your ENTIRE response MUST be valid JSON.
+- NO markdown.
+- NO backticks.
+- NO additional explanations.
+- NO prose.
+- NO comments outside JSON.
+- All file contents MUST be one JSON string.
+- Escape internal double quotes using \\".
+- Never escape single quotes.
+- No trailing commas.
+- "files" object is 100% mandatory.
 
-RULES:
-- Express: export router, controllers, models when in multi mode.
-- Next.js: generate API route files per endpoint.
-- Use async/await.
-- Use proper status codes.
+===========================
+ALWAYS RETURN MULTIPLE FILES
+===========================
+Never return only one file. Even for small tasks.
+
+Use real backend architecture:
+
+{
+  "files": {
+    "server.js": "<server setup code>",
+    "routes/app.routes.js": "<Express or Next.js route>",
+    "controllers/app.controller.js": "<controller logic>",
+    "models/app.model.js": "<DB model>",
+    "middleware/auth.js": "<middleware if needed>",
+    "services/app.service.js": "<business logic service>",
+    "utils/helpers.js": "<utility functions>"
+  }
+}
+
+===========================
+RUNTIME RULES
+===========================
+If runtime = "express":
+- Use express(), express.Router(), module.exports.
+- Use req, res, next.
+- Use modular route + controller files.
+
+If runtime = "nextjs":
+- Use NextResponse from "next/server".
+- Export async GET/POST/PUT/DELETE.
+- Use route.js format.
+
+===========================
+DATABASE RULES
+===========================
+If mongoose → Schema, model, find(), save(), updateOne().
+If prisma → PrismaClient() and prisma.modelName.
+If pg → Pool + SQL parameterized queries.
+If sequelize → Sequelize model methods.
+
+===========================
+FAILSAFE (MANDATORY)
+===========================
+If user request is unclear or incomplete:
+
+Return MULTI-FILE JSON anyway:
+
+{
+  "files": {
+    "server.js": "// Unable to process request. Missing details.",
+    "routes/app.routes.js": "// Missing details.",
+    "controllers/app.controller.js": "// Missing details."
+  }
+}
+
+You MUST ALWAYS return valid JSON with a "files" object.
 `;
 
     const result = await model.generateContent([
       systemPrompt,
-      `USER PROMPT: ${prompt}`,
-      `MODE: ${mode}`
+      `USER REQUEST: ${prompt}`,
+      `RUNTIME: ${runtime}`,
+      `DATABASE: ${dbType}`
     ]);
 
-    const raw = result.response.text().trim();
+    const responseText = result.response.text().trim();
 
-    if (mode === "multi") {
-      let json;
-      try {
-        json = JSON.parse(raw);
-      } catch {
-        return NextResponse.json({ error: "Malformed JSON from model." }, { status: 500 });
-      }
-      return NextResponse.json(json);
+    let parsed;
+
+    try {
+      parsed = JSON.parse(responseText);
+    } catch (e) {
+      return NextResponse.json(
+        {
+          files: {
+            "server.js": "// AI did not return valid JSON.",
+            "routes/app.routes.js": "// AI output invalid JSON.",
+            "controllers/app.controller.js": "// Generation failed."
+          }
+        },
+        { status: 200 }
+      );
     }
 
-    const cleaned = raw.replace(/```[\s\S]*?```/g, "").trim();
-    return NextResponse.json({ code: cleaned });
+    if (!parsed.files || typeof parsed.files !== "object") {
+      return NextResponse.json(
+        {
+          files: {
+            "server.js": "// AI output missing 'files' key.",
+            "routes/app.routes.js": "// Invalid output structure.",
+            "controllers/app.controller.js": "// Auto-recovered."
+          }
+        },
+        { status: 200 }
+      );
+    }
 
-  } catch (e) {
-    return NextResponse.json({ error: "Generation Failed" }, { status: 500 });
+    return NextResponse.json({
+      files: parsed.files
+    });
+
+  } catch (error) {
+    return NextResponse.json(
+      {
+        files: {
+          "server.js": "// Server crashed.",
+          "routes/app.routes.js": "// Internal server error.",
+          "controllers/app.controller.js": "// Recovery mode enabled."
+        }
+      },
+      { status: 200 }
+    );
   }
 }
